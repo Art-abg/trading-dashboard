@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Box, Button, Select, MenuItem, useTheme } from "@mui/material";
-import { createChart } from "lightweight-charts";
+import { createChart, ColorType } from "lightweight-charts";
 import { tokens } from "../../theme";
+import Data from "./data";
 
 const Trading = () => {
   const [symbol, setSymbol] = useState("BTCUSD");
@@ -9,34 +10,29 @@ const Trading = () => {
   const [chartType, setChartType] = useState("Candlestick");
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const { data } = Data();
   const chartContainerRef = useRef();
-
-  // Mock data for testing the chart
-  const mockData = [
-    { time: "2021-04-10", open: 70000, high: 70200, low: 69800, close: 70100 },
-    { time: "2021-04-11", open: 71100, high: 73200, low: 69800, close: 74100 },
-    { time: "2021-04-12", open: 72100, high: 72200, low: 71000, close: 71100 },
-    { time: "2021-04-13", open: 70000, high: 70200, low: 69800, close: 70100 },
-    { time: "2021-04-14", open: 71100, high: 73200, low: 69800, close: 74100 },
-    { time: "2021-04-15", open: 72100, high: 72200, low: 71000, close: 71100 },
-    { time: "2021-04-16", open: 70000, high: 70200, low: 69800, close: 70100 },
-    { time: "2021-04-17", open: 71100, high: 73200, low: 69800, close: 74100 },
-    { time: "2021-04-18", open: 72100, high: 72200, low: 71000, close: 71100 },
-    { time: "2021-04-19", open: 70000, high: 70200, low: 69800, close: 70100 },
-    { time: "2021-04-20", open: 71100, high: 73200, low: 69800, close: 74100 },
-    { time: "2021-04-21", open: 72100, high: 72200, low: 71000, close: 71100 }
-  ];
+  const chartRef = useRef();
 
   useEffect(() => {
-    if (chartContainerRef.current) {
+    if (chartContainerRef.current && !chartRef.current) {
       const chart = createChart(chartContainerRef.current, {
         width: chartContainerRef.current.clientWidth,
         height: 500,
         layout: {
-          background: colors.primary[400],
+          background: { type: ColorType.Solid, color: colors.primary[400] },
           textColor: colors.grey[100]
+        },
+        grid: {
+          vertLines: { color: colors.grey[700] },
+          horzLines: { color: colors.grey[700] }
         }
       });
+      chartRef.current = chart;
+    }
+
+    const chart = chartRef.current;
+    if (chart) {
       let series;
 
       switch (chartType) {
@@ -46,30 +42,62 @@ const Trading = () => {
         case "Line":
           series = chart.addLineSeries();
           break;
-        // Add other chart types as needed
+        case "Area":
+          series = chart.addAreaSeries();
+          break;
+        case "Histogram":
+          series = chart.addHistogramSeries();
+          break;
+        case "Bar":
+          series = chart.addBarSeries();
+          break;
+        case "Renko":
+          series = chart.addRenkoSeries();
+          break;
         default:
           series = chart.addCandlestickSeries();
       }
+      series.setData(data);
 
-      series.setData(mockData);
-
-      return () => chart.remove();
+      const lastVisibleRange = chart.timeScale().getVisibleRange();
+      if (lastVisibleRange) {
+        const newVisibleRange = {
+          from: lastVisibleRange.from,
+          to: data[data.length - 1].time
+        };
+        chart.timeScale().setVisibleRange(newVisibleRange);
+      }
     }
-  }, [symbol, timeframe, chartType, theme]);
+
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
+      }
+    };
+  }, [symbol, timeframe, chartType, theme, colors.primary, colors.grey, data]);
 
   return (
-    <Box>
-      <Box>
-        <Select value={symbol} onChange={(e) => setSymbol(e.target.value)}>
+    <Box m="30px">
+      <Box mb="10px">
+        <Select
+          value={symbol}
+          onChange={(e) => setSymbol(e.target.value)}
+          sx={{ mr: "10px" }}
+        >
           <MenuItem value="BTCUSD">BTC/USD</MenuItem>
           <MenuItem value="ETHUSD">ETH/USD</MenuItem>
         </Select>
         <Select
+          sx={{ mr: "10px" }}
           value={timeframe}
           onChange={(e) => setTimeframe(e.target.value)}
         >
+          <MenuItem value="1m">1 Minute</MenuItem>
           <MenuItem value="1D">1 Day</MenuItem>
           <MenuItem value="1W">1 Week</MenuItem>
+          <MenuItem value="1M">1 Month</MenuItem>
+          <MenuItem value="1Y">1 Year</MenuItem>
         </Select>
         <Select
           value={chartType}
@@ -77,21 +105,26 @@ const Trading = () => {
         >
           <MenuItem value="Candlestick">Candlestick</MenuItem>
           <MenuItem value="Line">Line</MenuItem>
+          <MenuItem value="Area">Area</MenuItem>
+          <MenuItem value="Histogram">Histogram</MenuItem>
+          <MenuItem value="Bar">Bar</MenuItem>
+          <MenuItem value="Renko">Renko</MenuItem>
+
           {/* Add more chart types as needed */}
         </Select>
       </Box>
       <Box
         ref={chartContainerRef}
         id="chart-container"
-        sx={{ height: "500px" }}
+        sx={{ height: "500px", width: "100%" }}
       >
         {/* Chart will be rendered here */}
       </Box>
-      <Box>
-        <Button variant="contained" color="primary">
+      <Box mt="10px" display="flex" justifyContent="center">
+        <Button variant="contained" color="secondary" sx={{ mr: "10px" }}>
           Buy
         </Button>
-        <Button variant="contained" color="secondary">
+        <Button variant="contained" color="red">
           Sell
         </Button>
       </Box>
