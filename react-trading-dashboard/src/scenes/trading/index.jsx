@@ -1,18 +1,22 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { Box, Button, Select, MenuItem, useTheme } from "@mui/material";
 import { createChart, ColorType } from "lightweight-charts";
 import { tokens } from "../../theme";
 import Data from "./data";
+import useChartData from "./data";
+import { updateChartData } from "./data";
 
 const Trading = () => {
-  const [symbol, setSymbol] = useState("BTCUSD");
-  const [timeframe, setTimeframe] = useState("1D");
+  const [symbol, setSymbol] = useState("BTCUSDT");
+  const [timeframe, setTimeframe] = useState("1m");
   const [chartType, setChartType] = useState("Candlestick");
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-  const { data } = Data();
+
   const chartContainerRef = useRef();
   const chartRef = useRef();
+
+  const data = useChartData(symbol, timeframe, 1000);
 
   useEffect(() => {
     if (chartContainerRef.current && !chartRef.current) {
@@ -26,50 +30,71 @@ const Trading = () => {
         grid: {
           vertLines: { color: colors.grey[700] },
           horzLines: { color: colors.grey[700] }
+        },
+        timeScale: {
+          rightOffset: 12,
+          barSpacing: 3,
+          fixLeftEdge: true,
+          lockVisibleTimeRangeOnResize: true,
+          rightBarStaysOnScroll: true,
+          timeVisible: true,
+          secondsVisible: false
         }
       });
       chartRef.current = chart;
     }
+    const handleResize = () => {
+      chart.reflow();
+      updateChartData(chart, data);
+    };
+
+    window.addEventListener("resize", handleResize);
 
     const chart = chartRef.current;
     if (chart) {
       let series;
 
-      switch (chartType) {
-        case "Candlestick":
-          series = chart.addCandlestickSeries();
-          break;
-        case "Line":
-          series = chart.addLineSeries();
-          break;
-        case "Area":
-          series = chart.addAreaSeries();
-          break;
-        case "Histogram":
-          series = chart.addHistogramSeries();
-          break;
-        case "Bar":
-          series = chart.addBarSeries();
-          break;
-        case "Renko":
-          series = chart.addRenkoSeries();
-          break;
-        default:
-          series = chart.addCandlestickSeries();
+      if (chart.series && chart.series.length > 0) {
+        series = chart.series[0];
+      } else {
+        switch (chartType) {
+          case "Candlestick":
+            series = chart.addCandlestickSeries();
+            break;
+          case "Line":
+            series = chart.addLineSeries();
+            break;
+          case "Area":
+            series = chart.addAreaSeries();
+            break;
+          case "Histogram":
+            series = chart.addHistogramSeries();
+            break;
+          case "Bar":
+            series = chart.addBarSeries();
+            break;
+          case "Renko":
+            series = chart.addRenkoSeries();
+            break;
+          default:
+            series = chart.addCandlestickSeries();
+        }
       }
-      series.setData(data);
+      if (data.data.length > 0) {
+        series.setData(data.data);
+      }
 
-      const lastVisibleRange = chart.timeScale().getVisibleRange();
-      if (lastVisibleRange) {
-        const newVisibleRange = {
-          from: lastVisibleRange.from,
-          to: data[data.length - 1].time
-        };
-        chart.timeScale().setVisibleRange(newVisibleRange);
-      }
+      data.setData = (newData) => {
+        series.update(newData);
+      };
+
+      chart.timeScale().applyOptions({
+        rightOffset: 12
+      });
     }
 
     return () => {
+      window.removeEventListener("resize", handleResize);
       if (chartRef.current) {
         chartRef.current.remove();
         chartRef.current = null;
@@ -85,8 +110,13 @@ const Trading = () => {
           onChange={(e) => setSymbol(e.target.value)}
           sx={{ mr: "10px" }}
         >
-          <MenuItem value="BTCUSD">BTC/USD</MenuItem>
-          <MenuItem value="ETHUSD">ETH/USD</MenuItem>
+          <MenuItem value="BTCUSDT">BTC/USDT</MenuItem>
+          <MenuItem value="ETHUSDT">ETH/USDT</MenuItem>
+          <MenuItem value="BNBUSDT">BNB/USDT</MenuItem>
+          <MenuItem value="ADAUSDT">ADA/USDT</MenuItem>
+          <MenuItem value="DOTUSDT">DOT/USDT</MenuItem>
+          <MenuItem value="SOLUSDT">SOL/USDT</MenuItem>
+          <MenuItem value="LUNAUSDT">LUNA/USDT</MenuItem>
         </Select>
         <Select
           sx={{ mr: "10px" }}
@@ -94,10 +124,10 @@ const Trading = () => {
           onChange={(e) => setTimeframe(e.target.value)}
         >
           <MenuItem value="1m">1 Minute</MenuItem>
-          <MenuItem value="1D">1 Day</MenuItem>
-          <MenuItem value="1W">1 Week</MenuItem>
+          <MenuItem value="1h">1 Hour</MenuItem>
+          <MenuItem value="1d">1 Day</MenuItem>
+          <MenuItem value="1w">1 Week</MenuItem>
           <MenuItem value="1M">1 Month</MenuItem>
-          <MenuItem value="1Y">1 Year</MenuItem>
         </Select>
         <Select
           value={chartType}
