@@ -14,8 +14,7 @@ const fetchData = async (symbol, interval, limit) => {
       open: parseFloat(kline[1]),
       high: parseFloat(kline[2]),
       low: parseFloat(kline[3]),
-      close: parseFloat(kline[4]),
-      isFinal: true // Mark the historical data as final
+      close: parseFloat(kline[4])
     }));
 
     return historicalData;
@@ -45,15 +44,14 @@ const useChartData = (symbol, interval, limit) => {
 
     const handleMessage = (event) => {
       const klineData = JSON.parse(event.data);
-      const { t, o, h, l, c, x } = klineData.k;
+      const { t, o, h, l, c } = klineData.k;
 
       const newData = {
         time: t / 1000,
         open: parseFloat(o),
         high: parseFloat(h),
         low: parseFloat(l),
-        close: parseFloat(c),
-        isFinal: x // Indicates if this kline is final (closed)
+        close: parseFloat(c)
       };
 
       setData((prevData) => {
@@ -81,12 +79,3 @@ const useChartData = (symbol, interval, limit) => {
 };
 
 export default useChartData;
-
-export const updateChartData = (chart, newData) => {
-  chart.series.forEach((series) => {
-    const seriesData = newData.find((d) => d.name === series.name);
-    if (seriesData) {
-      series.update(seriesData.data);
-    }
-  });
-};

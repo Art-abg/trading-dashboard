@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Box, Button, Select, MenuItem, useTheme } from "@mui/material";
 import { createChart, ColorType } from "lightweight-charts";
 import { tokens } from "../../theme";
-import Data from "./data";
 import useChartData from "./data";
-import { updateChartData } from "./data";
 
 const Trading = () => {
   const [symbol, setSymbol] = useState("BTCUSDT");
@@ -44,10 +42,17 @@ const Trading = () => {
       chartRef.current = chart;
     }
     const handleResize = () => {
-      chart.reflow();
-      updateChartData(chart, data);
-    };
+      const chart = chartRef.current;
+      if (chart) {
+        // Update the chart dimensions without resetting its state
+        chart.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+          height: chartContainerRef.current.clientHeight
+        });
 
+        // If necessary, restore the chart's position and zoom level here
+      }
+    };
     window.addEventListener("resize", handleResize);
 
     const chart = chartRef.current;
