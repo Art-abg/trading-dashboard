@@ -1,33 +1,68 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Box, Button, Select, MenuItem, useTheme } from "@mui/material";
-import { createChart, ColorType } from "lightweight-charts";
+import {
+  Box,
+  Button,
+  Select,
+  MenuItem,
+  TextField,
+  useTheme
+} from "@mui/material";
+import {
+  createChart,
+  ColorType,
+  CandlestickSeries,
+  LineSeries,
+  AreaSeries,
+  HistogramSeries,
+  BarSeries
+} from "lightweight-charts";
 import { tokens } from "../../theme";
 import useChartData from "./data";
+import { calculateRenkoBricks } from "./renkoUtils";
 
 const Trading = () => {
   const [symbol, setSymbol] = useState("BTCUSDT");
   const [timeframe, setTimeframe] = useState("1m");
   const [chartType, setChartType] = useState("Candlestick");
+  const [boxSize, setBoxSize] = useState(100);
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
+  // Extract colors used in useEffect to satisfy exhaustive-deps
+  const chartBackgroundColor = colors.primary[400];
+  const chartTextColor = colors.grey[100];
+  const chartGridColor = colors.grey[700];
+  const candleUpColor = colors.greenAccent[600];
+  const candleDownColor = colors.redAccent[600];
+  const lineAreaColor = colors.blueAccent[500];
+  const areaTopColor = colors.blueAccent[700];
+  const areaBottomColor = colors.blueAccent[900];
+
   const chartContainerRef = useRef();
   const chartRef = useRef();
+  const seriesRef = useRef(); // Ref to hold the current series instance
 
-  const data = useChartData(symbol, timeframe, 1000);
+  const { data: chartData } = useChartData(symbol, timeframe, 1000);
 
   useEffect(() => {
-    if (chartContainerRef.current && !chartRef.current) {
-      const chart = createChart(chartContainerRef.current, {
+    // Ensure chart container is available
+    if (!chartContainerRef.current) {
+      return;
+    }
+
+    // Initialize chart instance if it doesn't exist
+    let chart = chartRef.current;
+    if (!chart) {
+      chart = createChart(chartContainerRef.current, {
         width: chartContainerRef.current.clientWidth,
-        height: 500,
+        height: 500, // Or dynamic height
         layout: {
-          background: { type: ColorType.Solid, color: colors.primary[400] },
-          textColor: colors.grey[100]
+          background: { type: ColorType.Solid, color: chartBackgroundColor },
+          textColor: chartTextColor
         },
         grid: {
-          vertLines: { color: colors.grey[700] },
-          horzLines: { color: colors.grey[700] }
+          vertLines: { color: chartGridColor },
+          horzLines: { color: chartGridColor }
         },
         timeScale: {
           rightOffset: 12,
@@ -38,9 +73,117 @@ const Trading = () => {
           timeVisible: true,
           secondsVisible: false
         }
+        // Add other necessary chart options...
       });
       chartRef.current = chart;
     }
+
+    // Determine data format and options based on chart type
+    let transformedData = chartData; // Default to original data
+    let seriesOptions = {};
+    let seriesType = CandlestickSeries; // Default series type
+
+    if (chartType === "Candlestick") {
+      seriesOptions = {
+        upColor: candleUpColor,
+        downColor: candleDownColor,
+        borderVisible: false,
+        wickUpColor: candleUpColor,
+        wickDownColor: candleDownColor
+      };
+      // Data format is already { time, open, high, low, close }
+    } else if (chartType === "Renko") {
+      seriesType = CandlestickSeries; // Use Candlestick to draw Renko bricks
+      seriesOptions = {
+        upColor: candleUpColor,
+        downColor: candleDownColor,
+        borderVisible: false,
+        // Make wicks same color as body for solid brick look
+        wickUpColor: candleUpColor,
+        wickDownColor: candleDownColor
+      };
+      // Calculate Renko bricks
+      if (chartData) {
+        transformedData = calculateRenkoBricks(chartData, boxSize);
+      }
+    } else if (chartType === "Bar") {
+      seriesType = BarSeries;
+      seriesOptions = {
+        upColor: candleUpColor, // Use same colors as candlestick for consistency
+        downColor: candleDownColor
+      };
+      // Data format is already { time, open, high, low, close }
+    } else if (chartType === "Line") {
+      seriesType = LineSeries;
+      seriesOptions = { color: lineAreaColor };
+      // Transform data to { time, value }
+      if (chartData) {
+        transformedData = chartData.map((d) => ({
+          time: d.time,
+          value: d.close
+        }));
+      }
+    } else if (chartType === "Area") {
+      seriesType = AreaSeries;
+      seriesOptions = {
+        lineColor: lineAreaColor,
+        topColor: areaTopColor,
+        bottomColor: areaBottomColor
+      };
+      // Transform data to { time, value }
+      if (chartData) {
+        transformedData = chartData.map((d) => ({
+          time: d.time,
+          value: d.close
+        }));
+      }
+    } else if (chartType === "Histogram") {
+      seriesType = HistogramSeries;
+      seriesOptions = {
+        color: lineAreaColor // Use a consistent color
+      };
+      // Transform data to { time, value }
+      if (chartData) {
+        transformedData = chartData.map((d) => ({
+          time: d.time,
+          value: d.close
+        })); // Using 'close' for value, adjust if needed (e.g., use volume)
+      }
+    }
+    // Add other types as needed
+
+    // Check if the series type or boxSize (for Renko) requires recreating the series
+    let currentSeries = seriesRef.current;
+    const seriesTypeChanged = seriesRef.current?.seriesType !== chartType;
+    const boxSizeChanged =
+      chartType === "Renko" && seriesRef.current?.boxSize !== boxSize;
+
+    if (!currentSeries || seriesTypeChanged || boxSizeChanged) {
+      // Remove old series if it exists
+      if (currentSeries) {
+        chart.removeSeries(currentSeries);
+      }
+
+      // Use the determined seriesType
+      currentSeries = chart.addSeries(seriesType, seriesOptions);
+
+      seriesRef.current = currentSeries; // Store the newly created series
+      seriesRef.current.seriesType = chartType; // Store the type for comparison
+      if (chartType === "Renko") {
+        seriesRef.current.boxSize = boxSize; // Store boxSize for comparison
+      }
+    }
+
+    // Update the data for the current series using the transformed data
+    if (currentSeries && transformedData && transformedData.length > 0) {
+      currentSeries.setData(transformedData);
+      // Optional: Fit content after initial data load or type change
+      if (seriesTypeChanged) {
+        // chart.timeScale().fitContent(); // Uncomment if you want fitContent on type change
+      }
+    }
+
+    // Resize handler setup remains the same
     const handleResize = () => {
       const chart = chartRef.current;
       if (chart) {
@@ -55,57 +198,42 @@ const Trading = () => {
     };
     window.addEventListener("resize", handleResize);
 
-    const chart = chartRef.current;
-    if (chart) {
-      let series;
-
-      if (chart.series && chart.series.length > 0) {
-        series = chart.series[0];
-      } else {
-        switch (chartType) {
-          case "Candlestick":
-            series = chart.addCandlestickSeries();
-            break;
-          case "Line":
-            series = chart.addLineSeries();
-            break;
-          case "Area":
-            series = chart.addAreaSeries();
-            break;
-          case "Histogram":
-            series = chart.addHistogramSeries();
-            break;
-          case "Bar":
-            series = chart.addBarSeries();
-            break;
-          case "Renko":
-            series = chart.addRenkoSeries();
-            break;
-          default:
-            series = chart.addCandlestickSeries();
-        }
-      }
-      if (data.data.length > 0) {
-        series.setData(data.data);
-      }
-
-      data.setData = (newData) => {
-        series.update(newData);
-      };
-
-      chart.timeScale().applyOptions({
-        rightOffset: 12
-      });
-    }
-
+    // Cleanup function
     return () => {
       window.removeEventListener("resize", handleResize);
+      // Only remove the chart instance on component unmount
+      // Don't remove it here as this effect runs on data/option changes
+      // chartRef.current?.remove(); // Move remove to a final cleanup effect if needed
+    };
+
+    // Dependency array: Re-run if chart options, type, theme colors, data OR boxSize change.
+  }, [
+    symbol,
+    timeframe,
+    chartType,
+    boxSize,
+    theme,
+    chartData,
+    chartBackgroundColor,
+    chartTextColor,
+    chartGridColor,
+    candleUpColor,
+    candleDownColor,
+    lineAreaColor,
+    areaTopColor,
+    areaBottomColor
+  ]);
+
+  // Separate effect for final cleanup on unmount
+  useEffect(() => {
+    return () => {
       if (chartRef.current) {
         chartRef.current.remove();
         chartRef.current = null;
       }
+      seriesRef.current = null;
     };
-  }, [symbol, timeframe, chartType, theme, colors.primary, colors.grey, data]);
+  }, []); // Empty dependency array means run only on unmount
 
   return (
     <Box m="30px">
@@ -147,6 +275,19 @@ const Trading = () => {
 
           {/* Add more chart types as needed */}
         </Select>
+        {chartType === "Renko" && (
+          <TextField
+            label="Box Size"
+            type="number"
+            size="small"
+            value={boxSize}
+            onChange={(e) => setBoxSize(Number(e.target.value) || 1)}
+            sx={{ ml: "10px", width: "100px" }}
+            InputLabelProps={{
+              shrink: true
+            }}
+          />
+        )}
       </Box>
       <Box
         ref={chartContainerRef}

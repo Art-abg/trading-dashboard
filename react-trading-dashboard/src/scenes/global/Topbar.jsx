@@ -1,7 +1,7 @@
-import { Box, Icon, IconButton, Typography, useTheme } from "@mui/material";
+import { Box, IconButton, useTheme } from "@mui/material";
 import { useContext } from "react";
 import { ColorModeContext, tokens } from "../../theme";
-import { InputBase } from "@mui/material";
+import InputBase from "@mui/material/InputBase";
 import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import NotificationsOutlinedIcon from "@mui/icons-material/NotificationsOutlined";
@@ -23,27 +23,26 @@ const Topbar = () => {
         borderRadius="3px"
       >
         <InputBase sx={{ ml: 2, flex: 1 }} placeholder="Search" />
-        <IconButton type="button" sx={{ p: 1 }}>
+        <IconButton type="button" sx={{ p: 1 }} size="large">
           <SearchIcon />
         </IconButton>
       </Box>
-
       <Box display="flex" justifyContent="flex-end">
-        <IconButton onClick={colorMode.toggleColorMode}>
+        <IconButton onClick={colorMode.toggleColorMode} size="large">
           {theme.palette.mode === "dark" ? (
             <LightModeOutlinedIcon />
           ) : (
             <DarkModeOutlinedIcon />
           )}
         </IconButton>
-        <IconButton>
+        <IconButton size="large">
           {" "}
           <NotificationsOutlinedIcon />
         </IconButton>
-        <IconButton>
+        <IconButton size="large">
           <SettingsOutlinedIcon />
         </IconButton>
-        <IconButton>
+        <IconButton size="large">
           <PersonOutlinedIcon />
         </IconButton>
       </Box>

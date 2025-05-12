@@ -38,7 +38,6 @@ const Dashboard = () => {
           </Button>
         </Box>
       </Box>
-
       {/* GRID & CHARTS */}
       <Box
         display="grid"
@@ -154,7 +153,7 @@ const Dashboard = () => {
               </Typography>
             </Box>
             <Box>
-              <IconButton>
+              <IconButton size="large">
                 <DownloadOutlinedIcon
                   sx={{ fontSize: "26px", color: colors.greenAccent[500] }}
                 />

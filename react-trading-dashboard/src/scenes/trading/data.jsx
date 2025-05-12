@@ -56,14 +56,17 @@ const useChartData = (symbol, interval, limit) => {
 
       setData((prevData) => {
         const newDataIndex = prevData.findIndex((k) => k.time === newData.time);
-        if (newDataIndex === prevData.length - 1) {
-          const updatedData = [...prevData];
+        let updatedData = [...prevData];
+
+        if (newDataIndex !== -1) {
           updatedData[newDataIndex] = newData;
-          return updatedData;
-        } else if (newDataIndex === -1) {
-          return [...prevData, newData];
+        } else {
+          updatedData.push(newData);
+          if (updatedData.length > limit + 50) {
+            updatedData = updatedData.slice(updatedData.length - limit);
+          }
         }
-        return prevData;
+        return updatedData;
       });
     };
 
