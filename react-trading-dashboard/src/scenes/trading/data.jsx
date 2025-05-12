@@ -72,6 +72,16 @@ const useChartData = (symbol, interval, limit) => {
 
     socket.onmessage = handleMessage;
 
+    socket.onerror = (error) => {
+      console.error("WebSocket Error:", error);
+      // Optional: Implement reconnection logic here
+    };
+
+    socket.onclose = (event) => {
+      console.log("WebSocket Closed:", event.code, event.reason);
+      // Optional: Implement reconnection logic here if !event.wasClean
+    };
+
     return () => {
       mounted = false;
       socket.close();

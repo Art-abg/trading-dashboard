@@ -5,7 +5,9 @@ import {
   Select,
   MenuItem,
   TextField,
-  useTheme
+  useTheme,
+  Stack,
+  useMediaQuery
 } from "@mui/material";
 import {
   createChart,
@@ -27,6 +29,7 @@ const Trading = () => {
   const [boxSize, setBoxSize] = useState(100);
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   // Extract colors used in useEffect to satisfy exhaustive-deps
   const chartBackgroundColor = colors.primary[400];
@@ -236,12 +239,17 @@ const Trading = () => {
   }, []); // Empty dependency array means run only on unmount
 
   return (
-    <Box m="30px">
-      <Box mb="10px">
+    <Box m="20px">
+      <Stack
+        direction={isMobile ? "column" : "row"}
+        spacing={2}
+        mb="20px"
+        alignItems="center"
+      >
         <Select
           value={symbol}
           onChange={(e) => setSymbol(e.target.value)}
-          sx={{ mr: "10px" }}
+          sx={{ minWidth: 150 }}
         >
           <MenuItem value="BTCUSDT">BTC/USDT</MenuItem>
           <MenuItem value="ETHUSDT">ETH/USDT</MenuItem>
@@ -249,12 +257,11 @@ const Trading = () => {
           <MenuItem value="ADAUSDT">ADA/USDT</MenuItem>
           <MenuItem value="DOTUSDT">DOT/USDT</MenuItem>
           <MenuItem value="SOLUSDT">SOL/USDT</MenuItem>
-          <MenuItem value="LUNAUSDT">LUNA/USDT</MenuItem>
         </Select>
         <Select
-          sx={{ mr: "10px" }}
           value={timeframe}
           onChange={(e) => setTimeframe(e.target.value)}
+          sx={{ minWidth: 120 }}
         >
           <MenuItem value="1m">1 Minute</MenuItem>
           <MenuItem value="1h">1 Hour</MenuItem>
@@ -265,6 +272,7 @@ const Trading = () => {
         <Select
           value={chartType}
           onChange={(e) => setChartType(e.target.value)}
+          sx={{ minWidth: 150 }}
         >
           <MenuItem value="Candlestick">Candlestick</MenuItem>
           <MenuItem value="Line">Line</MenuItem>
@@ -272,8 +280,6 @@ const Trading = () => {
           <MenuItem value="Histogram">Histogram</MenuItem>
           <MenuItem value="Bar">Bar</MenuItem>
           <MenuItem value="Renko">Renko</MenuItem>
-
-          {/* Add more chart types as needed */}
         </Select>
         {chartType === "Renko" && (
           <TextField
@@ -282,13 +288,18 @@ const Trading = () => {
             size="small"
             value={boxSize}
             onChange={(e) => setBoxSize(Number(e.target.value) || 1)}
-            sx={{ ml: "10px", width: "100px" }}
+            sx={{ width: isMobile ? "100%" : "100px" }}
             InputLabelProps={{
               shrink: true
             }}
+            InputProps={{
+              inputProps: {
+                min: 1
+              }
+            }}
           />
         )}
-      </Box>
+      </Stack>
       <Box
         ref={chartContainerRef}
         id="chart-container"
@@ -300,7 +311,13 @@ const Trading = () => {
         <Button variant="contained" color="secondary" sx={{ mr: "10px" }}>
           Buy
         </Button>
-        <Button variant="contained" color="red">
+        <Button
+          variant="contained"
+          sx={{
+            backgroundColor: colors.redAccent[500],
+            "&:hover": { backgroundColor: colors.redAccent[700] }
+          }}
+        >
           Sell
         </Button>
       </Box>
